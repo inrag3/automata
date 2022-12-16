@@ -1,0 +1,12 @@
+        0     1     
+ >(S)  q1    D   
+ q1   q2     C 
+   C    D     D   
+  (D)	 q3     q3   
+  q2    Z     D  
+  q3    D     D    
+  (Z)	  q4    Y 
+  q4    Z     Z
+  (Y)   Z     Z,q5    
+  q5    -     F   
+  (F)   -     -  

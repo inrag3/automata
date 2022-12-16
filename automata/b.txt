@@ -1,0 +1,6 @@
+        a     b     c
+>(A)   B,A    -     C
+  B    D,A    -     -
+  C     -     C     B
+ (D)    -     E     C
+ (E)    E     E     E
