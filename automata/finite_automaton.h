@@ -3,7 +3,6 @@
 #define FINITE_AUTOMATON_H
 
 #include <set>
-#include <map>
 #include <iostream>
 #include <string>
 #include <fstream>
@@ -11,6 +10,7 @@
 #include <sstream>
 #include <algorithm>
 #include <regex>
+#include <format>
 
 using letter = std::string;
 using state = std::string;
@@ -28,6 +28,21 @@ line split(const std::string& s, char delim = ' ') {
 	}
 	return v;
 }
+
+template<typename Container>
+std::string join(Container const& container, char delim = ',')
+{
+	std::string s = "";
+	for (auto i = container.begin(); i != container.end(); ++i)
+	{
+		s += *i;
+		if (std::next(i) != container.end()) {
+			s += delim;
+		}
+	}
+	return s;
+}
+
 
 class finite_automaton
 {
@@ -74,6 +89,15 @@ class finite_automaton
 		return s[0] == '>';
 	}
 
+	std::string decorate_state(std::string const& s)
+	{
+		state state = s;
+		if (_start == s)
+			state = "(" + state + ")";
+		if (_accepts.contains(s))
+			state = ">" + state;
+		return state;
+	}
 public:
 	finite_automaton(std::string const& file_name)
 	{
@@ -107,15 +131,20 @@ public:
 				_start = state;
 			_states.insert(state);
 
-			//Filling transition
+			//Filling transitions
 			for (auto j = 1; j < line.size(); ++j)
 			{
 				auto states = split(line[j], ',');
 				_transition.push_back({ state, _alphabet[j - 1], { states.begin(), states.end() } });
 			}
 		}
+
+
+
 		file.close();
 	}
+
+	
 
 	void determinization()
 	{
@@ -123,9 +152,25 @@ public:
 	}
 
 
-	friend std::ostream& operator<<(std::ostream& os, finite_automaton const& a)
+	friend std::ostream& operator<<(std::ostream& os, finite_automaton& a)
 	{
-		//TODO output info
+
+		for (letter letter : a._alphabet)
+		{
+			os << std::format("{: >10}", letter);
+		}
+		std::cout << std::endl;
+		for (int i{}; i < a._transition.size(); ++i )
+		{
+			transition transition = a._transition[i];
+			auto state = a.decorate_state(transition.state());
+			if (i == 0)
+				os << std::format("{}", state);
+			if (i > 0 && a._transition[i].state() != a._transition[i - 1].state())
+				os << std::endl << std::format("{}", state);	
+			os << std::format("{: >10}", join(transition.states()));
+		} 
+		return os;
 	}
 };
 #endif 
