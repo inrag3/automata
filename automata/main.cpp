@@ -4,5 +4,10 @@
 int main()
 {
 	finite_automaton automaton = { "a.txt" };
-	std::cout << automaton << std::endl;
+	auto x = automaton.determinization();
+
+
+
+
+	std::cout << x << std::endl;
 }
