@@ -43,17 +43,26 @@ std::string join(Container const& container, std::string delim = " ")
 	return s;
 }
 
+
+std::string pad_left(std::string const& s, int padSize, char symbol = ' ')
+{
+	std::string string = s;
+	while (string.length() < padSize)
+		string = symbol + string;
+	return string;
+}
+
 class finite_automaton
 {
 	class transition
 	{
-		state _start;
+		std::set<state> _start;
 		letter _letter;
 		std::set<state> _states;
 
 	public:
 		transition() {};
-		transition(state s, letter l, std::set<state> ss) :_start(s), _letter(l), _states(ss) {};
+		transition(std::set<state> s, letter l, std::set<state> ss) :_start(s), _letter(l), _states(ss) {};
 
 
 		const std::set<state> states()
@@ -61,7 +70,7 @@ class finite_automaton
 			return _states;
 		}
 
-		const state start()
+		const std::set<state> start()
 		{
 			return _start;
 		}
@@ -90,18 +99,24 @@ class finite_automaton
 		return s.find('>') != std::string::npos;
 	}
 
-	std::string decorate_state(state const& s)
+	std::string decorate(std::set<state> const& s)
 	{
-		state state = s;
+		auto string = join(s, ",");
+		state state = string;
+		state = brackets(state);
 		for (auto accept : _accepts)
-			if (s == accept)
+			if (string == accept)
 			{
-				state = "(" + s + ')';
-				break;
+				state = "(" + state + ")";
 			}
-		if (s == _start)
+		if (string == _start)
 			state = ">" + state;
 		return state;
+	}
+
+	std::string brackets(std::string& s)
+	{
+		return '{' + s + '}';
 	}
 
 	transition merge(transition& t)
@@ -170,33 +185,37 @@ public:
 		finite_automaton automaton{};
 		std::vector<transition> transitions{};
 		automaton._alphabet = _alphabet;
-		auto start = *_states.begin();
+		auto start = *_states.find(_start);
 		std::vector<state> states{ start };
-		
+
 		automaton._start = start;
 		std::set<state> accepts{};
 		if (std::find(states.begin(), states.end(), start) != states.end())
 			accepts.insert(start);
 
-		for (auto j = 0; j < states.size(); ++j)
+		for (auto j = 0; j < states.size(); j++)
 		{
 			for (int i = 0; i < _alphabet.size(); i++)
 			{
 				letter letter = _alphabet[i];
 				std::set<state> transition_states{};
-				for (auto c : states[j])
+
+				for (auto x : split(states[j], ','))
 				{
-					std::string state{ c };
 					auto transition = std::find_if(_transition.begin(), _transition.end(), [&](auto tr) {
-						return letter == tr.letter() && state == tr.start();
+						return letter == tr.letter() && x == join(tr.start(), "");
 						});
+					if (transition == _transition.end())
+						continue;
 					auto states = (*transition).states();
 					transition_states.insert(states.begin(), states.end());
 				}
+
 				if (transition_states.size() != 1 && transition_states.find("-") != transition_states.end())
 					transition_states.erase("-");
-				transitions.push_back( { states[j], letter, transition_states } );
-				auto state = join(transitions[3*j+i].states(),"");
+				std::set<state> s{ states[j] };
+				transitions.push_back( { s , letter, transition_states });
+				auto state = join(transitions[_alphabet.size() * j + i].states(), ",");
 				if (state != "-" && std::find(states.begin(), states.end(), state) == states.end())
 				{
 					states.push_back(state);
@@ -220,18 +239,25 @@ public:
 	{
 		for (letter letter : a._alphabet)
 		{
-			os << std::format("{: >10}", letter);
+			os << pad_left(letter, 17);
 		}
 		std::cout << std::endl;
-		for (int i{}; i < a._transition.size(); ++i)
+		for (int i = 0,j = 1; i < a._transition.size(); ++i)
 		{
 			transition transition = a._transition[i];
-			auto state = a.decorate_state(transition.start());
+			auto state = a.decorate(transition.start());
 			if (i == 0)
-				os << std::format("{}", state);
+				os << state;
 			if (i > 0 && a._transition[i].start() != a._transition[i - 1].start())
-				os << std::endl << std::format("{}", state);
-			os << std::format("{: >10}", join(transition.states(),""));
+			{
+				os << std::endl << state;
+				j = 1;
+			}
+			if (i > 0 && a._transition[i].start() == a._transition[i - 1].start())
+				j++;
+			auto s = join(transition.states(), ",");
+			os << pad_left(a.brackets(s), 17 - (j == 1 ? state.length() : 0));
+			
 		}
 		return os;
 	}
