@@ -85,7 +85,7 @@ class finite_automaton
 	//M = (Q, Σ, δ, q0, F) 
 	std::set<state> _states;
 	std::vector<letter> _alphabet;
-	std::vector<transition> _transition;
+	std::vector<transition> _transitions;
 	state _start;
 	std::set<state> _accepts;
 
@@ -116,6 +116,8 @@ class finite_automaton
 
 	std::string brackets(std::string& s)
 	{
+		if (s == "-")
+			return s;
 		return '{' + s + '}';
 	}
 
@@ -124,7 +126,7 @@ class finite_automaton
 		std::set<state> states;
 		for (auto state : t.states())
 		{
-			auto it = std::find_if(_transition.begin(), _transition.end(), [&](transition x)
+			auto it = std::find_if(_transitions.begin(), _transitions.end(), [&](transition x)
 				{
 					return x.letter() == t.letter();
 				});
@@ -165,20 +167,33 @@ public:
 			if (accept(raw_state))
 				_accepts.insert(state);
 			if (start(raw_state))
-				_start = state;
-			_states.insert(state);
+			{
+				if (_start == "")
+					_start = state;
+				else throw std::invalid_argument("More than 1 initial state!");
+			}
 
+			_states.insert(state);
 			//Filling transitions
 			for (auto j = 1; j < line.size(); ++j)
 			{
 				auto states = split(line[j], ',');
-				_transition.push_back({ {state}, _alphabet[j - 1], { states.begin(), states.end() } });
+				_transitions.push_back({ {state}, _alphabet[j - 1], { states.begin(), states.end() } });
+			}
+		}
+		if (_transitions.size() != _alphabet.size() * _states.size())
+			throw std::invalid_argument("Transition table is written incorrectly!");
+
+		for (auto transition : _transitions)
+		{
+			for (auto state : transition.states())
+			{
+				if (state != "-" && _states.find(state) == _states.end())
+					throw std::invalid_argument("Transition table is written incorrectly!");
 			}
 		}
 		file.close();
 	}
-
-
 
 	finite_automaton determinization()
 	{
@@ -202,10 +217,10 @@ public:
 
 				for (auto x : split(states[j], ','))
 				{
-					auto transition = std::find_if(_transition.begin(), _transition.end(), [&](auto tr) {
+					auto transition = std::find_if(_transitions.begin(), _transitions.end(), [&](auto tr) {
 						return letter == tr.letter() && x == join(tr.start(), "");
 						});
-					if (transition == _transition.end())
+					if (transition == _transitions.end())
 						continue;
 					auto states = (*transition).states();
 					transition_states.insert(states.begin(), states.end());
@@ -228,7 +243,7 @@ public:
 			}
 		}
 		automaton._states.insert(states.begin(), states.end());
-		automaton._transition = transitions;
+		automaton._transitions = transitions;
 		automaton._accepts = accepts;
 		return automaton;
 	}
@@ -239,24 +254,24 @@ public:
 	{
 		for (letter letter : a._alphabet)
 		{
-			os << pad_left(letter, 17);
+			os << pad_left(letter, 25);
 		}
 		std::cout << std::endl;
-		for (int i = 0,j = 1; i < a._transition.size(); ++i)
+		for (int i = 0,j = 1; i < a._transitions.size(); ++i)
 		{
-			transition transition = a._transition[i];
+			transition transition = a._transitions[i];
 			auto state = a.decorate(transition.start());
 			if (i == 0)
 				os << state;
-			if (i > 0 && a._transition[i].start() != a._transition[i - 1].start())
+			if (i > 0 && a._transitions[i].start() != a._transitions[i - 1].start())
 			{
 				os << std::endl << state;
 				j = 1;
 			}
-			if (i > 0 && a._transition[i].start() == a._transition[i - 1].start())
+			if (i > 0 && a._transitions[i].start() == a._transitions[i - 1].start())
 				j++;
 			auto s = join(transition.states(), ",");
-			os << pad_left(a.brackets(s), 17 - (j == 1 ? state.length() : 0));
+			os << pad_left(a.brackets(s), 25 - (j == 1 ? state.length() : 0));
 			
 		}
 		return os;
